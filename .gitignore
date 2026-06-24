@@ -1,0 +1,28 @@
+# Dépendances
+node_modules/
+
+# Build Medusa
+.medusa/
+dist/
+
+# Variables d'environnement — NE JAMAIS COMMITTER
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# TypeScript
+*.tsbuildinfo

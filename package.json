@@ -1,0 +1,29 @@
+{
+  "name": "maisonprint-backend",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "medusa build",
+    "start": "medusa start",
+    "dev": "medusa develop",
+    "db:migrate": "medusa db:migrate",
+    "seed": "medusa exec src/scripts/seed.ts",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@medusajs/medusa": "^2.0.0",
+    "@medusajs/framework": "^2.0.0",
+    "@medusajs/file-s3": "^2.0.0",
+    "@medusajs/payment-stripe": "^2.0.0",
+    "@medusajs/fulfillment-manual": "^2.0.0",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "@medusajs/admin-bundler": "^2.0.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

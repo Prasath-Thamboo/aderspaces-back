@@ -1,10 +1,9 @@
-import { defineConfig, loadEnv } from "@medusajs/framework/config"
+import { defineConfig, loadEnv } from "@medusajs/framework/utils"
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd())
 
 export default defineConfig({
   admin: {
-    // Admin disponible à http://localhost:9000/app
     backendUrl: process.env.BACKEND_URL || "http://localhost:9000",
   },
 
@@ -85,21 +84,20 @@ export default defineConfig({
       },
     },
 
-    // ─── Notifications email Brevo (Phase 2) ───
-    // Le provider Brevo sera un module custom dans src/modules/brevo
-    // ...(process.env.BREVO_API_KEY ? [{
-    //   resolve: "@medusajs/medusa/notification",
-    //   options: {
-    //     providers: [{
-    //       resolve: "./src/modules/brevo",
-    //       id: "brevo",
-    //       options: {
-    //         channels: ["email"],
-    //         apiKey: process.env.BREVO_API_KEY,
-    //         from: { email: process.env.BREVO_FROM_EMAIL, name: process.env.BREVO_FROM_NAME },
-    //       },
-    //     }],
-    //   },
-    // }] : []),
+    // ─── Notifications email Brevo ───
+    ...(process.env.BREVO_API_KEY && !process.env.BREVO_API_KEY.startsWith("VOTRE") ? [{
+      resolve: "@medusajs/medusa/notification",
+      options: {
+        providers: [{
+          resolve: "./src/modules/brevo",
+          id: "brevo",
+          options: {
+            channels: ["email"],
+            apiKey: process.env.BREVO_API_KEY,
+            from: { email: process.env.BREVO_FROM_EMAIL || "noreply@maisonprint.fr", name: process.env.BREVO_FROM_NAME || "MaisonPrint" },
+          },
+        }],
+      },
+    }] : []),
   ],
 })

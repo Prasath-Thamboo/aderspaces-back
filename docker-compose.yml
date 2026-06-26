@@ -60,7 +60,7 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9000:9000"   # API S3
+      - "9002:9000"   # API S3 (9002 côté hôte pour éviter le conflit avec Medusa:9000)
       - "9001:9001"   # Console web
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]

@@ -22,7 +22,7 @@ export class BrevoNotificationService extends AbstractNotificationProviderServic
   constructor(options: Options, pluginOptions: BrevoOptions) {
     super()
     this.logger = options.logger as Logger | undefined
-    this.from = pluginOptions.from ?? { email: "noreply@maisonprint.fr", name: "MaisonPrint" }
+    this.from = pluginOptions.from ?? { email: "noreply@aderspace.fr", name: "Aderspace" }
     this.client = new BrevoClient({ apiKey: pluginOptions.apiKey })
     this.logger?.info("Brevo notification provider initialized")
   }
@@ -44,6 +44,10 @@ export class BrevoNotificationService extends AbstractNotificationProviderServic
       "rgpd": {
         subject: `Demande RGPD — ${data.type ?? ""}`,
         html: this.rgpdHtml(data),
+      },
+      "customer.password_reset": {
+        subject: "Réinitialisation de votre mot de passe Aderspace",
+        html: this.passwordResetHtml(data),
       },
     }
 
@@ -97,6 +101,20 @@ export class BrevoNotificationService extends AbstractNotificationProviderServic
       <p style="font-family:sans-serif"><strong>Email :</strong> ${data.email ?? ""}</p>
       <p style="font-family:sans-serif"><strong>Type :</strong> ${data.type ?? ""}</p>
       <p style="font-family:sans-serif"><strong>Précisions :</strong> ${data.message ?? "Aucune"}</p>
+    `
+  }
+
+  private passwordResetHtml(data: Record<string, unknown>): string {
+    return `
+      <h1 style="font-family:sans-serif">Réinitialisation de mot de passe</h1>
+      <p style="font-family:sans-serif">
+        Une demande de réinitialisation de mot de passe a été faite pour ${data.email ?? ""}.
+        Ce lien expire dans 15 minutes.
+      </p>
+      <p style="font-family:sans-serif">
+        <a href="${data.reset_url ?? ""}">Réinitialiser mon mot de passe</a>
+      </p>
+      <p style="font-family:sans-serif">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
     `
   }
 }

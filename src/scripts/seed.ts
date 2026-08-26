@@ -1,5 +1,5 @@
 import { ExecArgs } from "@medusajs/framework/types"
-import { Modules } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
 export default async function seed({ container }: ExecArgs) {
   const logger = container.resolve("logger")
@@ -259,7 +259,16 @@ export default async function seed({ container }: ExecArgs) {
   ].filter((p) => !existingHandles.has(p.handle))
 
   if (productsToCreate.length > 0) {
-    await productService.createProducts(productsToCreate as any)
+    const created = await productService.createProducts(productsToCreate as any)
+
+    // Rattacher les nouveaux produits au canal de vente (sinon invisibles côté storefront)
+    const remoteLink = container.resolve(ContainerRegistrationKeys.REMOTE_LINK)
+    await remoteLink.create(
+      created.map((product: any) => ({
+        [Modules.PRODUCT]: { product_id: product.id },
+        [Modules.SALES_CHANNEL]: { sales_channel_id: defaultChannel.id },
+      }))
+    )
   }
 
   logger.info("✓ Seed terminé avec succès !")

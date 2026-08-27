@@ -1,5 +1,16 @@
 import { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import {
+  createShippingProfilesWorkflow,
+  createShippingOptionsWorkflow,
+  linkSalesChannelsToStockLocationWorkflow,
+  updateRegionsWorkflow,
+} from "@medusajs/medusa/core-flows"
+
+// Providers résolus par les modules (cf. medusa-config.ts)
+const MANUAL_FULFILLMENT_PROVIDER = "manual_manual"
+const SYSTEM_PAYMENT_PROVIDER = "pp_system_default"
+const STRIPE_PAYMENT_PROVIDER = "pp_stripe_stripe"
 
 export default async function seed({ container }: ExecArgs) {
   const logger = container.resolve("logger")
@@ -11,7 +22,7 @@ export default async function seed({ container }: ExecArgs) {
   const taxService = container.resolve(Modules.TAX)
   const stockLocationService = container.resolve(Modules.STOCK_LOCATION)
 
-  logger.info("Début du seed MaisonPrint…")
+  logger.info("Début du seed Aderspace…")
 
   // ─── 1. Sales Channel ───
   logger.info("Canal de vente…")
@@ -19,14 +30,14 @@ export default async function seed({ container }: ExecArgs) {
   const defaultChannel = existingChannels.length > 0
     ? existingChannels[0]
     : (await salesChannelService.createSalesChannels([
-        { name: "Boutique en ligne", description: "Canal principal MaisonPrint", is_disabled: false },
+        { name: "Boutique en ligne", description: "Canal principal Aderspace", is_disabled: false },
       ]))[0]
 
   // ─── 2. Store ───
   const stores = await storeService.listStores()
   if (stores.length > 0) {
     await storeService.updateStores(stores[0].id, {
-      name: "MaisonPrint",
+      name: "Aderspace",
       default_sales_channel_id: defaultChannel.id,
     })
   }
@@ -74,6 +85,111 @@ export default async function seed({ container }: ExecArgs) {
         },
       },
     ])
+  }
+  const [stockLocation] = await stockLocationService.listStockLocations({ name: "Entrepôt principal" })
+  const [franceRegion] = await regionService.listRegions({ name: "France" })
+
+  // ─── 5b. Livraison : profil, zone France, options d'expédition ───
+  // Nécessaire pour que le checkout propose une méthode de livraison.
+  logger.info("Livraison (profil / zone / options)…")
+  const fulfillmentService = container.resolve(Modules.FULFILLMENT)
+  const link = container.resolve(ContainerRegistrationKeys.LINK)
+
+  // Profil d'expédition par défaut
+  let [shippingProfile] = await fulfillmentService.listShippingProfiles({ type: "default" })
+  if (!shippingProfile) {
+    const { result } = await createShippingProfilesWorkflow(container).run({
+      input: { data: [{ name: "Profil par défaut", type: "default" }] },
+    })
+    shippingProfile = result[0]
+  }
+
+  // Fulfillment set + zone de service France (une seule fois)
+  let [fulfillmentSet] = await fulfillmentService.listFulfillmentSets(
+    { name: "Livraison Aderspace" },
+    { relations: ["service_zones"] }
+  )
+  if (!fulfillmentSet) {
+    fulfillmentSet = await fulfillmentService.createFulfillmentSets({
+      name: "Livraison Aderspace",
+      type: "shipping",
+      service_zones: [
+        { name: "France métropolitaine", geo_zones: [{ country_code: "fr", type: "country" }] },
+      ],
+    })
+    // Rattacher l'entrepôt au fulfillment set + au provider manuel
+    await link.create({
+      [Modules.STOCK_LOCATION]: { stock_location_id: stockLocation.id },
+      [Modules.FULFILLMENT]: { fulfillment_set_id: fulfillmentSet.id },
+    })
+    await link.create({
+      [Modules.STOCK_LOCATION]: { stock_location_id: stockLocation.id },
+      [Modules.FULFILLMENT]: { fulfillment_provider_id: MANUAL_FULFILLMENT_PROVIDER },
+    })
+  }
+  const serviceZone = fulfillmentSet.service_zones[0]
+
+  // Rattacher l'entrepôt au canal de vente (stock visible pour le storefront)
+  await linkSalesChannelsToStockLocationWorkflow(container).run({
+    input: { id: stockLocation.id, add: [defaultChannel.id] },
+  }).catch(() => { /* déjà lié */ })
+
+  // Options d'expédition (prix TTC, même échelle que les produits : montant × 100)
+  const existingOptions = await fulfillmentService.listShippingOptions({
+    shipping_profile_id: shippingProfile.id,
+  })
+  const optionNames = new Set(existingOptions.map((o: any) => o.name))
+  const optionsToCreate = [
+    {
+      name: "Livraison standard",
+      price: 690,
+      type: { label: "Standard", description: "Livraison à domicile sous 3 à 5 jours ouvrés", code: "standard" },
+    },
+    {
+      name: "Livraison mobilier volumineux",
+      price: 4900,
+      type: { label: "Volumineux", description: "Livraison sur rendez-vous pour les articles volumineux", code: "bulky" },
+    },
+  ].filter((o) => !optionNames.has(o.name))
+
+  for (const opt of optionsToCreate) {
+    await createShippingOptionsWorkflow(container).run({
+      input: [
+        {
+          name: opt.name,
+          price_type: "flat",
+          provider_id: MANUAL_FULFILLMENT_PROVIDER,
+          service_zone_id: serviceZone.id,
+          shipping_profile_id: shippingProfile.id,
+          type: opt.type,
+          prices: [
+            { currency_code: "eur", amount: opt.price },
+            ...(franceRegion ? [{ region_id: franceRegion.id, amount: opt.price }] : []),
+          ],
+          rules: [
+            { attribute: "enabled_in_store", value: "true", operator: "eq" },
+            { attribute: "is_return", value: "false", operator: "eq" },
+          ],
+        },
+      ],
+    })
+  }
+
+  // ─── 5c. Fournisseurs de paiement de la région France ───
+  // pp_system_default : toujours dispo (paiement manuel, permet de tester le tunnel sans Stripe).
+  // pp_stripe_stripe : ajouté automatiquement dès que STRIPE_SECRET_KEY est renseignée.
+  if (franceRegion) {
+    const paymentProviders = [SYSTEM_PAYMENT_PROVIDER]
+    if (process.env.STRIPE_SECRET_KEY) {
+      paymentProviders.push(STRIPE_PAYMENT_PROVIDER)
+    }
+    logger.info(`Fournisseurs de paiement région France : ${paymentProviders.join(", ")}`)
+    await updateRegionsWorkflow(container).run({
+      input: {
+        selector: { id: franceRegion.id },
+        update: { payment_providers: paymentProviders, is_tax_inclusive: true },
+      },
+    })
   }
 
   // ─── 6. Catégories de produits ───
@@ -278,5 +394,5 @@ export default async function seed({ container }: ExecArgs) {
   logger.info("  → 12 produits (4 mobilier, 4 imprimantes, 4 encres)")
   logger.info("")
   logger.info("Pour créer le compte admin, exécutez :")
-  logger.info("  medusa user -e admin@maisonprint.fr -p VotreMotDePasse")
+  logger.info("  medusa user -e admin@aderspace.fr -p VotreMotDePasse")
 }

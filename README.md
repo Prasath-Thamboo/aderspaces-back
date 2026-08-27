@@ -1,6 +1,6 @@
-# MaisonPrint — Backend (Medusa v2)
+# Aderspace — Backend (Medusa v2)
 
-API e-commerce et back-office d'administration pour MaisonPrint.
+API e-commerce et back-office d'administration pour Aderspace.
 
 ## Stack
 
@@ -23,8 +23,8 @@ API e-commerce et back-office d'administration pour MaisonPrint.
 ### 1. Cloner le dépôt et installer les dépendances
 
 ```bash
-git clone https://github.com/VOTRE_ORG/maisonprint-backend.git
-cd maisonprint-backend
+git clone https://github.com/Prasath-Thamboo/aderspaces-back.git
+cd aderspaces-back
 pnpm install
 ```
 
@@ -70,7 +70,7 @@ Cela crée :
 ### 6. Créer le compte administrateur
 
 ```bash
-pnpm medusa user -e admin@maisonprint.fr -p VotreMotDePasse123!
+pnpm medusa user -e admin@aderspace.fr -p VotreMotDePasse123!
 ```
 
 ### 7. Démarrer le serveur de développement
@@ -126,7 +126,7 @@ src/
 
 | Service | URL | Identifiants |
 |---|---|---|
-| Medusa Admin | http://localhost:9000/app | admin@maisonprint.fr |
+| Medusa Admin | http://localhost:9000/app | admin@aderspace.fr |
 | MinIO Console | http://localhost:9001 | minioadmin / minioadmin123 |
 | MeiliSearch | http://localhost:7700 | masterKeyDevOnlyChangeInProd |
 | PostgreSQL | localhost:5432 | maisonprint / maisonprint_pwd |

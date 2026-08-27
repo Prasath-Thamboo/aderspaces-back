@@ -46,30 +46,33 @@ export default defineConfig({
       },
     },
 
-    // ─── Paiement Stripe (SCA / 3D Secure) ───
-    // Activer une fois les clés Stripe renseignées (Phase 2)
-    ...(process.env.STRIPE_SECRET_KEY
-      ? [
-          {
-            resolve: "@medusajs/medusa/payment",
-            options: {
-              providers: [
+    // ─── Paiement ───
+    // Le module est toujours chargé : il fournit `pp_system_default` (paiement
+    // manuel) qui permet de tester le tunnel de commande sans Stripe.
+    // Le provider Stripe (SCA / 3D Secure) s'ajoute automatiquement dès que
+    // STRIPE_SECRET_KEY est renseignée dans .env — rien d'autre à faire.
+    {
+      resolve: "@medusajs/medusa/payment",
+      options: {
+        providers: [
+          ...(process.env.STRIPE_SECRET_KEY
+            ? [
                 {
                   resolve: "@medusajs/payment-stripe",
                   id: "stripe",
                   options: {
                     apiKey: process.env.STRIPE_SECRET_KEY,
                     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-                    // Forcer la capture automatique + 3DS
+                    // Capture automatique + méthodes de paiement dynamiques (3DS)
                     capture: true,
                     automatic_payment_methods: true,
                   },
                 },
-              ],
-            },
-          },
-        ]
-      : []),
+              ]
+            : []),
+        ],
+      },
+    },
 
     // ─── Fulfillment manuel (placeholder Phase 2) ───
     {
@@ -94,7 +97,7 @@ export default defineConfig({
           options: {
             channels: ["email"],
             apiKey: process.env.BREVO_API_KEY,
-            from: { email: process.env.BREVO_FROM_EMAIL || "noreply@maisonprint.fr", name: process.env.BREVO_FROM_NAME || "MaisonPrint" },
+            from: { email: process.env.BREVO_FROM_EMAIL || "noreply@aderspace.fr", name: process.env.BREVO_FROM_NAME || "Aderspace" },
           },
         }],
       },

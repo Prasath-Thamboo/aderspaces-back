@@ -82,7 +82,7 @@ export class BrevoNotificationService extends AbstractNotificationProviderServic
         Votre commande <strong>#${data.order_id ?? ""}</strong> a bien été enregistrée.
       </p>
       <p style="font-family:sans-serif">Total : <strong>${data.total ?? ""}</strong></p>
-      <p style="font-family:sans-serif">À bientôt,<br>L'équipe MaisonPrint</p>
+      <p style="font-family:sans-serif">À bientôt,<br>L'équipe Aderspace</p>
     `
   }
 

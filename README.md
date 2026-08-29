@@ -129,4 +129,4 @@ src/
 | Medusa Admin | http://localhost:9000/app | admin@aderspace.fr |
 | MinIO Console | http://localhost:9001 | minioadmin / minioadmin123 |
 | MeiliSearch | http://localhost:7700 | masterKeyDevOnlyChangeInProd |
-| PostgreSQL | localhost:5432 | maisonprint / maisonprint_pwd |
+| PostgreSQL | localhost:5432 | aderspace / aderspace_pwd |

@@ -26,8 +26,9 @@ export default async function backfillInventory({ container }: ExecArgs) {
   // POST /admin/stock-locations/:id/sales-channels (linkSalesChannelsToStockLocationWorkflow).
 
   // Variantes gérant l'inventaire sans article d'inventaire existant.
-  const variants = await productService.listProductVariants({ manage_inventory: true })
+  const variants = await productService.listProductVariants({ manage_inventory: true } as any)
   const variantInventoryLink = remoteLink.getLinkModule(Modules.PRODUCT, "variant_id", Modules.INVENTORY, "inventory_item_id")
+  if (!variantInventoryLink) throw new Error("Module de lien variant <-> inventory introuvable.")
   const existingVariantLinks = await variantInventoryLink.list({ variant_id: variants.map((v: any) => v.id) }, { select: ["variant_id"] })
   const alreadyLinked = new Set(existingVariantLinks.map((l: any) => l.variant_id))
   const toFix = variants.filter((v: any) => !alreadyLinked.has(v.id))

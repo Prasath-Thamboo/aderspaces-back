@@ -34,7 +34,7 @@ export default defineConfig({
               access_key_id: process.env.MINIO_ACCESS_KEY,
               secret_access_key: process.env.MINIO_SECRET_KEY,
               region: process.env.MINIO_REGION || "us-east-1",
-              bucket: process.env.MINIO_BUCKET || "maisonprint",
+              bucket: process.env.MINIO_BUCKET || "aderspace",
               endpoint: process.env.MINIO_ENDPOINT,
               // Requis pour MinIO (URLs path-style, pas virtual-hosted)
               additional_client_config: {

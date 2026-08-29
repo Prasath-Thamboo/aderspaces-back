@@ -38,6 +38,7 @@ export default async function backfillPrices({ container }: ExecArgs) {
   const variants = await productService.listProductVariants({ sku: skus })
 
   const linkService = remoteLink.getLinkModule(Modules.PRODUCT, "variant_id", Modules.PRICING, "price_set_id")
+  if (!linkService) throw new Error("Module de lien variant <-> pricing introuvable.")
   const existingLinks = await linkService.list({ variant_id: variants.map((v: any) => v.id) }, { select: ["variant_id"] })
   const alreadyLinked = new Set(existingLinks.map((l: any) => l.variant_id))
 

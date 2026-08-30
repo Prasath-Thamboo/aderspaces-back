@@ -22,5 +22,5 @@
     }
   },
   "include": ["src", "medusa-config.ts"],
-  "exclude": ["node_modules", "dist", ".medusa"]
+  "exclude": ["node_modules", "dist", ".medusa", "src/admin", "**/*.spec.ts"]
 }

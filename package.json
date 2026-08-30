@@ -9,7 +9,8 @@
     "dev": "medusa develop",
     "db:migrate": "medusa db:migrate",
     "seed": "medusa exec src/scripts/seed.ts",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@getbrevo/brevo": "^5.0.4",
@@ -18,14 +19,17 @@
     "@medusajs/fulfillment-manual": "^2.0.0",
     "@medusajs/medusa": "^2.0.0",
     "@medusajs/payment-stripe": "^2.0.0",
+    "pdfkit": "^0.20.1",
     "pg": "^8.11.0"
   },
   "devDependencies": {
     "@medusajs/admin-bundler": "^2.0.0",
     "@medusajs/admin-sdk": "^2.17.1",
     "@types/node": "^20.0.0",
+    "@types/pdfkit": "^0.17.6",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=20.0.0"

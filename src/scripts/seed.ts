@@ -5,6 +5,8 @@ import {
   createShippingOptionsWorkflow,
   linkSalesChannelsToStockLocationWorkflow,
   updateRegionsWorkflow,
+  createApiKeysWorkflow,
+  linkSalesChannelsToApiKeyWorkflow,
 } from "@medusajs/medusa/core-flows"
 
 // Providers résolus par les modules (cf. medusa-config.ts)
@@ -41,6 +43,30 @@ export default async function seed({ container }: ExecArgs) {
       default_sales_channel_id: defaultChannel.id,
     })
   }
+
+  // ─── 2b. Clé publiable API (storefront) + lien canal de vente ───
+  logger.info("Clé publiable API…")
+  const apiKeyService = container.resolve(Modules.API_KEY)
+  const existingPublishableKeys = await apiKeyService.listApiKeys({ type: "publishable" })
+  let publishableKey =
+    existingPublishableKeys.find((k) => k.title === "Storefront Aderspace") ??
+    existingPublishableKeys[0]
+
+  if (!publishableKey) {
+    const { result } = await createApiKeysWorkflow(container).run({
+      input: {
+        api_keys: [
+          { title: "Storefront Aderspace", type: "publishable", created_by: "seed" },
+        ],
+      },
+    })
+    publishableKey = result[0]
+  }
+
+  // Lien vers "Boutique en ligne" — idempotent (le workflow ignore un lien déjà présent)
+  await linkSalesChannelsToApiKeyWorkflow(container).run({
+    input: { id: publishableKey.id, add: [defaultChannel.id] },
+  })
 
   // ─── 3. Région France (EUR) ───
   logger.info("Région France…")
@@ -392,6 +418,7 @@ export default async function seed({ container }: ExecArgs) {
   logger.info("  → Région : France (EUR) avec TVA 20%")
   logger.info("  → 3 catégories")
   logger.info("  → 12 produits (4 mobilier, 4 imprimantes, 4 encres)")
+  logger.info(`  → Clé publiable (frontend/.env NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY) : ${publishableKey.token}`)
   logger.info("")
   logger.info("Pour créer le compte admin, exécutez :")
   logger.info("  medusa user -e admin@aderspace.fr -p VotreMotDePasse")

@@ -87,6 +87,14 @@ export default defineConfig({
       },
     },
 
+    // ─── Modules métier Aderspace ───
+    // Avis produits (achat vérifié + modération admin).
+    { resolve: "./src/modules/product-review" },
+    // Compatibilité entre produits, pilotable depuis l'admin.
+    { resolve: "./src/modules/product-compatibility" },
+    // Factures PDF conformes (numérotation séquentielle FR).
+    { resolve: "./src/modules/invoice" },
+
     // ─── Notifications email Brevo ───
     ...(process.env.BREVO_API_KEY && !process.env.BREVO_API_KEY.startsWith("VOTRE") ? [{
       resolve: "@medusajs/medusa/notification",

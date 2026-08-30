@@ -49,6 +49,10 @@ export class BrevoNotificationService extends AbstractNotificationProviderServic
         subject: "Réinitialisation de votre mot de passe Aderspace",
         html: this.passwordResetHtml(data),
       },
+      "order.invoice": {
+        subject: `Votre facture Aderspace ${data.invoice_number ?? ""}`,
+        html: this.invoiceHtml(data),
+      },
     }
 
     const tpl = templates[template]
@@ -57,12 +61,23 @@ export class BrevoNotificationService extends AbstractNotificationProviderServic
       return { id: "noop" }
     }
 
+    const rawAttachments = Array.isArray(data.attachments) ? data.attachments : []
+    const attachment = rawAttachments
+      .map((a) => {
+        const att = a as { name?: string; contentBase64?: string }
+        return att?.name && att?.contentBase64
+          ? { name: att.name, content: att.contentBase64 }
+          : null
+      })
+      .filter((a): a is { name: string; content: string } => a !== null)
+
     try {
       const response = await this.client.transactionalEmails.sendTransacEmail({
         sender: { email: this.from.email, name: this.from.name },
         to: [{ email: to }],
         subject: tpl.subject,
         htmlContent: tpl.html,
+        ...(attachment.length > 0 ? { attachment } : {}),
       })
       const messageId = (response as any)?.messageId ?? "sent"
       this.logger?.info(`[Brevo] Email envoyé à ${to} (${template})`)
@@ -101,6 +116,22 @@ export class BrevoNotificationService extends AbstractNotificationProviderServic
       <p style="font-family:sans-serif"><strong>Email :</strong> ${data.email ?? ""}</p>
       <p style="font-family:sans-serif"><strong>Type :</strong> ${data.type ?? ""}</p>
       <p style="font-family:sans-serif"><strong>Précisions :</strong> ${data.message ?? "Aucune"}</p>
+    `
+  }
+
+  private invoiceHtml(data: Record<string, unknown>): string {
+    return `
+      <h1 style="font-family:sans-serif">Votre facture est disponible</h1>
+      <p style="font-family:sans-serif">
+        Bonjour,<br>
+        La facture <strong>${data.invoice_number ?? ""}</strong> de votre commande
+        <strong>#${data.order_id ?? ""}</strong> est jointe à cet email au format PDF.
+      </p>
+      <p style="font-family:sans-serif">
+        Vous pouvez également la retrouver à tout moment dans votre espace client,
+        rubrique « Mes commandes ».
+      </p>
+      <p style="font-family:sans-serif">L'équipe Aderspace</p>
     `
   }
 

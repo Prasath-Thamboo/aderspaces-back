@@ -23,6 +23,7 @@ export default async function seed({ container }: ExecArgs) {
   const storeService = container.resolve(Modules.STORE)
   const taxService = container.resolve(Modules.TAX)
   const stockLocationService = container.resolve(Modules.STOCK_LOCATION)
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
 
   logger.info("Début du seed Aderspace…")
 
@@ -63,10 +64,24 @@ export default async function seed({ container }: ExecArgs) {
     publishableKey = result[0]
   }
 
-  // Lien vers "Boutique en ligne" — idempotent (le workflow ignore un lien déjà présent)
-  await linkSalesChannelsToApiKeyWorkflow(container).run({
-    input: { id: publishableKey.id, add: [defaultChannel.id] },
-  })
+  // La clé publiable doit être liée à EXACTEMENT un canal ("Boutique en ligne").
+  // Si elle pointe aussi vers le "Default Sales Channel" auto-créé par Medusa,
+  // `POST /store/carts` échoue ("multiple associated sales channels").
+  {
+    const { data: keyGraph } = await query.graph({
+      entity: "api_key",
+      fields: ["id", "sales_channels.id"],
+      filters: { id: publishableKey.id },
+    })
+    const linkedChannelIds: string[] = (keyGraph[0]?.sales_channels ?? []).map((c: any) => c.id)
+    const removeIds = linkedChannelIds.filter((id) => id !== defaultChannel.id)
+    const addIds = linkedChannelIds.includes(defaultChannel.id) ? [] : [defaultChannel.id]
+    if (addIds.length > 0 || removeIds.length > 0) {
+      await linkSalesChannelsToApiKeyWorkflow(container).run({
+        input: { id: publishableKey.id, add: addIds, remove: removeIds },
+      })
+    }
+  }
 
   // ─── 3. Région France (EUR) ───
   logger.info("Région France…")
@@ -79,13 +94,22 @@ export default async function seed({ container }: ExecArgs) {
 
   // ─── 4. TVA France (20% standard) ───
   logger.info("TVA France…")
-  const existingTaxRegions = await taxService.listTaxRegions({ country_code: "fr" })
+  const taxProviders = await taxService.listTaxProviders()
+  // Provider système (`tp_system`) : sans lui sur la région, l'ajout au panier
+  // plante dans le calcul de TVA ("Unable to retrieve the tax provider with id: null").
+  const taxProviderId =
+    taxProviders.find((p: any) => p.id === "tp_system" || p.id.endsWith("_system"))?.id ??
+    taxProviders[0]?.id
+  const existingTaxRegions = await taxService.listTaxRegions(
+    { country_code: "fr" },
+    { select: ["id", "provider_id"] }
+  )
   if (existingTaxRegions.length === 0) {
-    const taxProviders = await taxService.listTaxProviders()
-    if (taxProviders.length > 0) {
+    if (taxProviderId) {
       await taxService.createTaxRegions([
         {
           country_code: "fr",
+          provider_id: taxProviderId,
           default_tax_rate: {
             name: "TVA France standard",
             rate: 20,
@@ -93,6 +117,15 @@ export default async function seed({ container }: ExecArgs) {
           },
         },
       ])
+    }
+  } else if (taxProviderId) {
+    // Rattrape une région créée sans provider par une version antérieure du seed.
+    const withoutProvider = existingTaxRegions.filter((r: any) => !r.provider_id)
+    for (const r of withoutProvider) {
+      await taxService.updateTaxRegions({
+        selector: { id: r.id },
+        data: { provider_id: taxProviderId },
+      } as any)
     }
   }
 

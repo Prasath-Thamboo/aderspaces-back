@@ -9,6 +9,11 @@
     "dev": "medusa develop",
     "db:migrate": "medusa db:migrate",
     "seed": "medusa exec src/scripts/seed.ts",
+    "seed:images": "medusa exec src/scripts/add-product-images.ts",
+    "seed:fix-prices": "medusa exec src/scripts/backfill-prices.ts",
+    "seed:fix-inventory": "medusa exec src/scripts/backfill-inventory.ts",
+    "seed:fix-taxprovider": "medusa exec src/scripts/fix-tax-provider.ts",
+    "seed:fix-apikey": "medusa exec src/scripts/fix-publishable-key-channel.ts",
     "lint": "tsc --noEmit",
     "test": "vitest run"
   },

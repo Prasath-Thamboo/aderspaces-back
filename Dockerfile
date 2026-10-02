@@ -13,8 +13,7 @@ WORKDIR /app
 # ---- build (deps complètes + compilation) ----
 FROM base AS build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
@@ -22,15 +21,16 @@ RUN pnpm build
 FROM base AS runner
 ENV NODE_ENV=production
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm install --frozen-lockfile --prod
-COPY --from=build /app/dist ./dist
-
 RUN addgroup -g 1001 -S medusa \
     && adduser -S medusa -u 1001 \
-    && chown -R medusa:medusa /app
+    && chown medusa:medusa /app
 USER medusa
+
+COPY --chown=medusa:medusa package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile --prod
+# `dist/` est une application autonome (medusa-config.js, src/, public/admin) :
+# elle doit être à la racine du répertoire de travail pour `medusa start`.
+COPY --chown=medusa:medusa --from=build /app/dist ./
 
 EXPOSE 9000
 

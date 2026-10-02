@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@getbrevo/brevo": "^5.0.4",
+    "@medusajs/cli": "2.19.0",
     "@medusajs/file-s3": "^2.0.0",
     "@medusajs/framework": "^2.0.0",
     "@medusajs/fulfillment-manual": "^2.0.0",

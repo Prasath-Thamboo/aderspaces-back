@@ -1,3 +1,7 @@
+﻿# Medusa (dashboard admin, CLI) résout react, @medusajs/ui, etc. depuis la
+# racine du projet : sans hoisting à plat, `medusa build` échoue sur une
+# installation propre (CI, Docker).
+shamefullyHoist: true
 allowBuilds:
   '@medusajs/telemetry': true
   esbuild: true

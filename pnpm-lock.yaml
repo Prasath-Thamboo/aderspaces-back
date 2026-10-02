@@ -11,6 +11,9 @@ importers:
       '@getbrevo/brevo':
         specifier: ^5.0.4
         version: 5.0.4
+      '@medusajs/cli':
+        specifier: 2.19.0
+        version: 2.19.0(@types/node@20.19.43)
       '@medusajs/file-s3':
         specifier: ^2.0.0
         version: 2.19.0(@medusajs/framework@2.19.0(@medusajs/cli@2.19.0(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.6(@types/node@20.19.43)(jiti@1.21.7)(yaml@2.9.0))(zod@4.2.0))

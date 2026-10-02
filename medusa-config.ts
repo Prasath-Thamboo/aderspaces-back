@@ -4,7 +4,9 @@ loadEnv(process.env.NODE_ENV || "development", process.cwd())
 
 export default defineConfig({
   admin: {
-    backendUrl: process.env.BACKEND_URL || "http://localhost:9000",
+    // Figée au build du dashboard. Sans BACKEND_URL (image Docker construite
+    // sans connaître son URL), l'admin appelle l'origine qui le sert.
+    backendUrl: process.env.BACKEND_URL || "/",
   },
 
   projectConfig: {

@@ -1,8 +1,10 @@
 import { SubscriberArgs, type SubscriberConfig } from "@medusajs/framework"
 import { Modules } from "@medusajs/framework/utils"
-import { meiliIndexDocuments, meiliDeleteDocument, PRODUCTS_INDEX } from "../lib/meilisearch-client"
+import { isMeiliEnabled, meiliIndexDocuments, meiliDeleteDocument, PRODUCTS_INDEX } from "../lib/meilisearch-client"
 
 async function syncProductToMeiliSearch({ event, container }: SubscriberArgs<{ id: string }>) {
+  if (!isMeiliEnabled()) return
+
   if (event.name === "product.deleted") {
     await meiliDeleteDocument(PRODUCTS_INDEX, event.data.id).catch(() => null)
     return

@@ -1,0 +1,70 @@
+# Blueprint Render — recette gratuite du backend (cf. DEPLOY.md, section Render).
+# Render → New → Blueprint → repo aderspaces-back. Région Frankfurt (UE).
+# Le plan free n'a ni disque ni service privé : Postgres est chez Neon, les
+# images chez Supabase Storage, et la recherche se passe de MeiliSearch.
+# Les variables `sync: false` sont demandées à la création du Blueprint.
+
+services:
+  - type: keyvalue
+    name: aderspace-redis
+    region: frankfurt
+    plan: free
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
+
+  - type: web
+    name: aderspace-back
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: frankfurt
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "9000"
+      - key: DATABASE_URL # Neon, chaîne de connexion directe (sans -pooler)
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: aderspace-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+
+      # URLs publiques (https://aderspace-back-xxxx.onrender.com, URL Vercel).
+      - key: BACKEND_URL
+        sync: false
+      - key: ADMIN_CORS
+        sync: false
+      - key: STOREFRONT_URL
+        sync: false
+      - key: STORE_CORS
+        sync: false
+      - key: AUTH_CORS
+        sync: false
+
+      # Supabase Storage (API S3) — Project Settings → Storage → S3 Connection.
+      - key: MINIO_ENDPOINT
+        sync: false
+      - key: MINIO_PUBLIC_URL
+        sync: false
+      - key: MINIO_REGION
+        sync: false
+      - key: MINIO_ACCESS_KEY
+        sync: false
+      - key: MINIO_SECRET_KEY
+        sync: false
+      - key: MINIO_BUCKET
+        value: aderspace
+
+      # Placeholders tant que la société n'est pas immatriculée.
+      - key: INVOICE_SELLER_NAME
+        value: Aderspace SAS
+      - key: INVOICE_SELLER_ADDRESS
+        value: 1 rue Exemple, 75000 Paris, France
+      - key: INVOICE_SELLER_EMAIL
+        value: contact@aderspace.fr

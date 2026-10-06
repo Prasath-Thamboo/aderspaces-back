@@ -1,8 +1,16 @@
 export const PRODUCTS_INDEX = "products"
 
+// Sans MEILISEARCH_HOST (hébergement gratuit sans Meili), l'indexation est
+// ignorée et la route de recherche interroge directement le module produit.
+export function isMeiliEnabled(): boolean {
+  return Boolean(process.env.MEILISEARCH_HOST)
+}
+
 function getMeiliConfig() {
+  const host = process.env.MEILISEARCH_HOST || "http://localhost:7700"
   return {
-    host: process.env.MEILISEARCH_HOST || "http://localhost:7700",
+    // Accepte `hôte:port` sans protocole (format injecté par certains hébergeurs).
+    host: /^https?:\/\//.test(host) ? host : `http://${host}`,
     apiKey: process.env.MEILISEARCH_API_KEY || "",
   }
 }

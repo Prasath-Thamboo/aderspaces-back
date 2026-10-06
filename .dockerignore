@@ -16,6 +16,7 @@ Thumbs.db
 README.md
 DEPLOY.md
 railway.json
+render.yaml
 Dockerfile
 .dockerignore
 docker-compose.yml

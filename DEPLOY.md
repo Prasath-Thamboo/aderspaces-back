@@ -141,3 +141,81 @@ mentions légales et `INVOICE_SELLER_*` réelles, domaine définitif,
 `NEXT_PUBLIC_SITE_INDEXABLE=true`, retrait de `BASIC_AUTH_*`, sauvegardes
 Postgres, modules Redis de Medusa (event bus, workflow engine) à la place des
 versions en mémoire.
+
+---
+
+# Variante gratuite : Render (backend) + Neon + Supabase Storage + Vercel
+
+Tout en offre gratuite, sans carte bancaire. Décrit dans `render.yaml`.
+
+```
+Render   : backend Medusa (web free, Dockerfile) + Key Value free (Redis)
+Neon     : Postgres (free, région Frankfurt)
+Supabase : stockage des images (Storage, API S3, 1 Go)
+Vercel   : storefront
+```
+
+Limites à connaître :
+- **Mise en veille** du backend après 15 min sans trafic : la première requête
+  suivante prend ~1 min (démarrage + migrations). Ouvrir `/health` avant une démo.
+- 512 Mo de RAM : suffisant pour une recette, pas pour de la charge.
+- Pas de Shell sur le plan free : seed et scripts se lancent **depuis ce PC**
+  contre la base Neon (étape 3).
+- Pas de MeiliSearch : `MEILISEARCH_HOST` non défini → la recherche passe par
+  Postgres (moins tolérante aux fautes de frappe).
+- Supabase met en pause un projet inactif 7 jours (réactivation en un clic).
+
+## 1. Neon
+Créer un projet, région **AWS Europe Central (Frankfurt)**, base `aderspace`.
+Copier la chaîne de connexion **directe** (décocher *Connection pooling*) :
+`postgresql://…@ep-xxx.eu-central-1.aws.neon.tech/aderspace?sslmode=require`.
+
+## 2. Supabase Storage
+Créer un projet (région Frankfurt), puis :
+- `Storage → New bucket` : `aderspace`, **Public bucket** coché.
+- `Project Settings → Storage → S3 Connection` : activer, noter l'endpoint et la
+  région, puis `New access key` (Access key ID + Secret).
+
+| Variable | Valeur |
+|---|---|
+| `MINIO_ENDPOINT` | `https://<ref>.supabase.co/storage/v1/s3` |
+| `MINIO_PUBLIC_URL` | `https://<ref>.supabase.co/storage/v1/object/public/aderspace` |
+| `MINIO_REGION` | région affichée (ex. `eu-central-1`) |
+| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | la clé S3 créée |
+
+## 3. Données initiales (depuis ce PC)
+Dans `backend/`, avec un fichier temporaire `.env.recette` (ignoré par git)
+contenant `DATABASE_URL` (Neon) et les `MINIO_*` (Supabase). Garder
+`docker compose up -d` lancé : le reste de la config vient du `.env` local
+(Redis, Meili locaux). En PowerShell :
+
+```powershell
+Get-Content .env.recette | % { $k,$v = $_ -split '=',2; Set-Item "env:$k" $v }
+pnpm db:migrate
+pnpm seed                 # affiche la clé publiable pk_…
+pnpm seed:fix-prices
+pnpm seed:fix-inventory
+pnpm seed:images          # upload des images du storefront vers Supabase
+pnpm exec medusa user -e <email admin> -p <mot de passe fort>
+```
+
+Ouvrir un nouveau terminal ensuite (les variables restent sinon définies).
+
+## 4. Render
+Pousser sur `main`, puis `New → Blueprint → aderspaces-back`. Renseigner les
+variables demandées : `DATABASE_URL` et `MINIO_*` comme ci-dessus ; pour les
+URLs encore inconnues, mettre `http://localhost:3000` provisoirement.
+Une fois l'URL `https://aderspace-back-xxxx.onrender.com` connue, mettre à
+jour `BACKEND_URL` et `ADMIN_CORS`.
+
+## 5. Vercel puis retour sur Render
+Vercel comme en section 2, avec `NEXT_PUBLIC_ASSET_HOST=https://<ref>.supabase.co`.
+Puis sur Render : `STOREFRONT_URL`, `STORE_CORS` = URL Vercel,
+`AUTH_CORS` = `<URL backend>,<URL Vercel>` → *Save, rebuild and deploy*.
+
+## Dépannage spécifique
+- **Healthcheck en échec au premier déploiement** : relancer le déploiement
+  (démarrage à froid lent sur le plan free).
+- **Instance redémarre en boucle (« Out of memory »)** : limite du plan free ;
+  vérifier les logs, il n'y a pas d'alternative gratuite plus grosse sur Render.
+- **Images en 403** : le bucket Supabase doit être public.
